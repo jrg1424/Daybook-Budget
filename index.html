@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="description" content="A simple monthly budget and daily spending tracker.">
+    <title>Daybook Budget</title>
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="stylesheet" href="/styles.css">
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <main class="login-screen" id="login-screen" aria-labelledby="login-title">
+      <section class="login-intro">
+        <a class="login-brand" href="#" aria-label="Daybook Budget">
+          <span class="brand-mark" aria-hidden="true">d</span>
+          <span>daybook<span class="brand-light"> budget</span></span>
+        </a>
+        <div class="login-intro-content">
+          <p class="eyebrow">A CALMER WAY TO HANDLE MONEY</p>
+          <h1>Make room for what matters.</h1>
+          <p class="login-intro-copy">A little structure for today's spending and the things you're saving for.</p>
+          <div class="login-principles" aria-label="Budget categories">
+            <div class="login-principle"><span class="login-principle-dot needs" aria-hidden="true"></span><span>Needs</span><span>Cover the essentials</span></div>
+            <div class="login-principle"><span class="login-principle-dot wants" aria-hidden="true"></span><span>Wants</span><span>Make space for joy</span></div>
+            <div class="login-principle"><span class="login-principle-dot savings" aria-hidden="true"></span><span>Savings</span><span>Grow what comes next</span></div>
+          </div>
+        </div>
+        <p class="login-footnote">Your budget stays on this device.</p>
+      </section>
+
+      <section class="login-content" aria-label="Sign in">
+        <div class="login-form-wrap">
+          <p class="eyebrow">DAYBOOK BUDGET</p>
+          <h2 id="login-title">Welcome back.</h2>
+          <p class="login-subtitle">Sign in to pick up where you left off.</p>
+          <form id="login-form" class="login-form">
+            <label for="demo-email">Email address
+              <input id="demo-email" type="email" autocomplete="off" placeholder="you@example.com" required>
+            </label>
+            <label for="demo-passcode">Demo passcode
+              <input id="demo-passcode" type="password" autocomplete="off" placeholder="Enter any passcode" required>
+            </label>
+            <button class="button button-primary login-submit" type="submit">Continue to your budget</button>
+          </form>
+          <p class="login-demo-notice">Local demo only. Account authentication isn't connected. Use placeholder details; don't enter a real password. Nothing you enter here is saved.</p>
+        </div>
+      </section>
+    </main>
+
+    <div class="app-shell" id="app-shell" hidden>
+      <aside class="sidebar" aria-label="Main navigation">
+        <a class="brand" href="#overview" aria-label="Daybook Budget home">
+          <span class="brand-mark" aria-hidden="true">d</span>
+          <span>daybook<span class="brand-light"> budget</span></span>
+        </a>
+        <nav class="primary-nav">
+          <button class="nav-link is-active" data-view="overview" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></svg>
+            <span>Overview</span>
+          </button>
+          <button class="nav-link" data-view="activity" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5h11M8 12h11M8 19h11"/><path d="M3.5 5h.01M3.5 12h.01M3.5 19h.01"/></svg>
+            <span>Activity</span>
+          </button>
+          <button class="nav-link" data-view="reports" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5V12m5 7.5V5m5 14.5v-10m5 10V8"/></svg>
+            <span>Reports</span>
+          </button>
+        </nav>
+        <div class="sidebar-bottom">
+          <p>Made for real life.</p>
+          <span>Your money stays on this device.</span>
+        </div>
+      </aside>
+
+      <div class="main-column">
+        <header class="topbar">
+          <div class="mobile-brand" aria-label="Daybook Budget">
+            <span class="brand-mark" aria-hidden="true">d</span>
+            <span>daybook</span>
+          </div>
+          <div class="month-controls" aria-label="Choose budget month">
+            <label class="month-picker">
+              <span class="sr-only">Choose month</span>
+              <select id="month-picker" aria-label="Choose month">
+                <option value="01">Jan</option>
+                <option value="02">Feb</option>
+                <option value="03">Mar</option>
+                <option value="04">Apr</option>
+                <option value="05">May</option>
+                <option value="06">Jun</option>
+                <option value="07">Jul</option>
+                <option value="08">Aug</option>
+                <option value="09">Sep</option>
+                <option value="10">Oct</option>
+                <option value="11">Nov</option>
+                <option value="12">Dec</option>
+              </select>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg>
+            </label>
+            <label class="month-picker year-picker">
+              <span class="sr-only">Choose year</span>
+              <select id="year-picker" aria-label="Choose year">
+                <option value="2026">2026</option>
+                <option value="2027">2027</option>
+                <option value="2028">2028</option>
+                <option value="2029">2029</option>
+              </select>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg>
+            </label>
+          </div>
+          <button class="button button-primary top-add" id="open-transaction" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            <span>Add entry</span>
+          </button>
+          <button class="icon-button profile-trigger" id="profile-trigger" type="button" aria-label="Open profile menu" aria-expanded="false" aria-controls="profile-menu" title="Profile">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c.5-3.2 3.2-5 7-5s6.5 1.8 7 5"/></svg>
+          </button>
+          <section class="profile-menu" id="profile-menu" role="dialog" aria-modal="false" aria-labelledby="profile-title" hidden>
+            <div class="profile-menu-heading">
+              <div><p class="eyebrow">YOUR ACCOUNT</p><h2 id="profile-title">Profile</h2></div>
+              <button class="icon-button" id="close-profile-menu" type="button" aria-label="Close profile menu" title="Close">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+              </button>
+            </div>
+            <form id="profile-form" class="profile-form">
+              <label for="profile-name">Name<input id="profile-name" name="name" type="text" autocomplete="name" maxlength="60" placeholder="Your name" required></label>
+              <button class="button button-outline" type="submit">Save name</button>
+            </form>
+            <div class="profile-menu-divider"></div>
+            <button class="profile-logout" id="profile-logout" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l5-5-5-5M15 12H3M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6"/></svg>
+              <span>Log out</span>
+            </button>
+          </section>
+        </header>
+
+        <main id="main-content">
+          <section class="view-panel is-visible" data-view-panel="overview">
+            <div class="page-heading">
+              <div>
+                <p class="eyebrow" id="overview-date">YOUR MONTH, AT A GLANCE</p>
+                <h1>Money, made clearer.</h1>
+                <p class="page-subtitle">A little look at where your month stands.</p>
+              </div>
+              <button class="button button-outline desktop-add" id="open-transaction-desktop" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                <span>Quick entry</span>
+              </button>
+            </div>
+
+            <section class="summary-grid" aria-label="Monthly totals">
+              <article class="summary-item summary-featured">
+                <span class="summary-label">Left to spend</span>
+                <strong id="remaining-total">$0</strong>
+                <span class="summary-note" id="remaining-note">Set category budgets to get started</span>
+                <div class="overall-track" aria-hidden="true"><span id="overall-progress"></span></div>
+              </article>
+              <article class="summary-item">
+                <span class="summary-label">Spent this month</span>
+                <strong id="spent-total">$0</strong>
+                <span class="summary-note" id="spent-note">Across all categories</span>
+              </article>
+              <article class="summary-item">
+                <span class="summary-label">Income this month</span>
+                <strong id="income-total">$0</strong>
+                <span class="summary-note">Entries marked as income</span>
+              </article>
+            </section>
+
+            <div class="budget-income-alert" id="budget-income-alert" role="status" aria-live="polite" hidden>
+              <span class="budget-income-alert-dot" aria-hidden="true"></span>
+              <span class="budget-income-alert-copy" id="budget-income-alert-copy"></span>
+              <button class="text-button" id="budget-income-alert-action" type="button"></button>
+            </div>
+
+            <div class="dashboard-grid">
+              <section class="content-section budget-section">
+                <div class="section-heading">
+                  <div>
+                    <h2>Category budgets</h2>
+                    <p>Keep an eye on the things you spend on.</p>
+                  </div>
+                  <button class="text-button" id="open-budgets" type="button">Edit budgets</button>
+                </div>
+                <div id="category-list" class="category-list"></div>
+              </section>
+
+              <section class="content-section recent-section">
+                <div class="section-heading">
+                  <div>
+                    <h2>Recent activity</h2>
+                    <p>Your latest money moves.</p>
+                  </div>
+                  <button class="text-button" data-go-view="activity" type="button">See all</button>
+                </div>
+                <div id="recent-list" class="transaction-list"></div>
+              </section>
+            </div>
+          </section>
+
+          <section class="view-panel" data-view-panel="activity" hidden>
+            <div class="page-heading">
+              <div>
+                <p class="eyebrow">EVERYTHING IN ONE PLACE</p>
+                <h1>Activity</h1>
+                <p class="page-subtitle" id="activity-subtitle">Income and spending for this month.</p>
+              </div>
+              <button class="button button-primary desktop-add" data-open-transaction type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                <span>Add entry</span>
+              </button>
+            </div>
+            <section class="content-section activity-section">
+              <div class="section-heading activity-heading">
+                <div>
+                  <h2 id="activity-month-title">This month</h2>
+                  <p id="activity-count">0 entries</p>
+                </div>
+                <div class="filter-control">
+                  <label for="activity-filter">Show</label>
+                  <select id="activity-filter">
+                    <option value="all">All entries</option>
+                    <option value="expense">Expenses</option>
+                    <option value="income">Income</option>
+                  </select>
+                </div>
+              </div>
+              <div id="activity-list" class="transaction-list"></div>
+            </section>
+          </section>
+
+          <section class="view-panel" data-view-panel="reports" hidden>
+            <div class="page-heading">
+              <div>
+                <p class="eyebrow">A CLOSER LOOK</p>
+                <h1>Spending report</h1>
+                <p class="page-subtitle">See which categories went over budget.</p>
+              </div>
+            </div>
+            <section class="content-section report-controls">
+              <div class="section-heading">
+                <div>
+                  <h2>Choose a date range</h2>
+                  <p>Budgets are adjusted to match the days selected.</p>
+                </div>
+              </div>
+              <form id="report-form" class="date-range-form">
+                <label>From<input id="report-start" type="date" required></label>
+                <span class="date-range-divider" aria-hidden="true">to</span>
+                <label>Through<input id="report-end" type="date" required></label>
+                <button class="button button-primary" type="submit">Create report</button>
+              </form>
+            </section>
+            <section class="content-section report-results" id="report-results" aria-live="polite">
+              <div class="report-empty">
+                <span class="report-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M4 19.5V12m5 7.5V5m5 14.5v-10m5 10V8"/></svg>
+                </span>
+                <h2>Your report will appear here</h2>
+                <p>Choose dates above to compare spending with your category budgets.</p>
+              </div>
+            </section>
+          </section>
+        </main>
+      </div>
+
+      <nav class="bottom-nav" aria-label="Main navigation">
+        <button class="nav-link is-active" data-view="overview" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></svg>
+          <span>Home</span>
+        </button>
+        <button class="nav-link" data-view="activity" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5h11M8 12h11M8 19h11"/><path d="M3.5 5h.01M3.5 12h.01M3.5 19h.01"/></svg>
+          <span>Activity</span>
+        </button>
+        <button class="nav-link" data-view="reports" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5V12m5 7.5V5m5 14.5v-10m5 10V8"/></svg>
+          <span>Reports</span>
+        </button>
+      </nav>
+    </div>
+
+    <dialog class="app-dialog" id="transaction-dialog" aria-labelledby="transaction-title">
+      <form id="transaction-form" novalidate>
+        <div class="dialog-heading">
+          <div>
+            <p class="eyebrow">QUICK ENTRY</p>
+            <h2 id="transaction-title">Add to your month</h2>
+          </div>
+          <button class="icon-button" type="button" data-close-dialog aria-label="Close">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+        <div class="segmented-control" role="group" aria-label="Entry type">
+          <button type="button" class="is-selected" data-kind="expense" aria-pressed="true">Expense</button>
+          <button type="button" data-kind="income" aria-pressed="false">Income</button>
+        </div>
+        <label class="field-label amount-field" for="entry-amount">Amount
+          <span class="amount-input-wrap"><span aria-hidden="true">$</span><input id="entry-amount" inputmode="decimal" type="number" min="0.01" step="0.01" placeholder="0.00" required></span>
+        </label>
+        <div class="form-row">
+          <label class="field-label" for="entry-category">Category<select id="entry-category" required></select></label>
+          <label class="field-label" for="entry-date">Date<input id="entry-date" type="date" required></label>
+        </div>
+        <label class="field-label" for="entry-note">Note <span class="optional-label">Optional</span>
+          <input id="entry-note" type="text" maxlength="80" placeholder="What was it for?">
+        </label>
+        <p class="form-error" id="transaction-error" role="alert"></p>
+        <div class="dialog-actions">
+          <button class="button button-quiet" type="button" data-close-dialog>Cancel</button>
+          <button class="button button-primary" type="submit">Save entry</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="app-dialog budgets-dialog" id="budgets-dialog" aria-labelledby="budgets-title">
+      <form id="budgets-form">
+        <div class="dialog-heading">
+          <div>
+            <p class="eyebrow">MAKE IT YOURS</p>
+            <h2 id="budgets-title">Category budgets</h2>
+          </div>
+          <button class="icon-button" type="button" data-close-dialog aria-label="Close">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+        <p class="dialog-copy" id="budget-copy">Set a monthly amount for each category. Leave it at $0 if you do not need a limit.</p>
+        <div id="budget-fields" class="budget-fields"></div>
+        <div class="add-category-row">
+          <label class="sr-only" for="new-category">New category name</label>
+          <input id="new-category" type="text" maxlength="28" placeholder="Add a category">
+          <button class="button button-outline" id="add-category" type="button">Add</button>
+        </div>
+        <p class="form-error" id="budget-error" role="alert"></p>
+        <div class="dialog-actions">
+          <button class="button button-quiet" type="button" data-close-dialog>Cancel</button>
+          <button class="button button-primary" type="submit">Save budgets</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </body>
+</html>

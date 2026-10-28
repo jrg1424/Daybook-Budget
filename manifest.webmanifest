@@ -1,0 +1,18 @@
+{
+  "id": "/",
+  "name": "Daybook Budget",
+  "short_name": "Daybook",
+  "description": "A simple monthly budget and daily spending tracker.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
