@@ -174,18 +174,25 @@ function renderOverview() {
   const budgetIncomeAlert = document.querySelector("#budget-income-alert");
   const budgetIncomeAlertCopy = document.querySelector("#budget-income-alert-copy");
   const budgetIncomeAlertAction = document.querySelector("#budget-income-alert-action");
-  if (totalBudget > 0 && totals.income > 0 && totalBudget > totals.income) {
+  const budgetOverIncome = totalBudget > totals.income;
+  const spendingOverIncome = totals.expense > totals.income;
+  if (budgetOverIncome || spendingOverIncome) {
     budgetIncomeAlert.hidden = false;
     budgetIncomeAlert.classList.remove("is-neutral");
-    budgetIncomeAlertCopy.textContent = `Your category budgets exceed this month's income by ${formatMoney(totalBudget - totals.income)}.`;
-    budgetIncomeAlertAction.textContent = "Review budgets";
-    budgetIncomeAlertAction.dataset.action = "budgets";
-  } else if (totalBudget > 0 && totals.income === 0) {
-    budgetIncomeAlert.hidden = false;
-    budgetIncomeAlert.classList.add("is-neutral");
-    budgetIncomeAlertCopy.textContent = "Add income to compare your category budgets with this month's income.";
-    budgetIncomeAlertAction.textContent = "Add income";
-    budgetIncomeAlertAction.dataset.action = "income";
+    if (budgetOverIncome && spendingOverIncome) {
+      budgetIncomeAlertCopy.textContent = `Your category budgets (${formatMoney(totalBudget)}) and spending (${formatMoney(totals.expense)}) both exceed this month's income (${formatMoney(totals.income)}).`;
+    } else if (budgetOverIncome) {
+      budgetIncomeAlertCopy.textContent = totals.income === 0
+        ? `Your category budgets total ${formatMoney(totalBudget)}, but no income is recorded this month.`
+        : `Your category budgets exceed this month's income by ${formatMoney(totalBudget - totals.income)}.`;
+    } else {
+      budgetIncomeAlertCopy.textContent = totals.income === 0
+        ? `Your spending is ${formatMoney(totals.expense)}, but no income is recorded this month.`
+        : `Your spending exceeds this month's income by ${formatMoney(totals.expense - totals.income)}.`;
+    }
+    const action = totals.income === 0 ? "income" : budgetOverIncome ? "budgets" : "activity";
+    budgetIncomeAlertAction.textContent = action === "income" ? "Add income" : action === "budgets" ? "Review budgets" : "Review activity";
+    budgetIncomeAlertAction.dataset.action = action;
   } else {
     budgetIncomeAlert.hidden = true;
   }
@@ -492,6 +499,7 @@ document.addEventListener("keydown", (event) => {
 });
 document.querySelector("#budget-income-alert-action").addEventListener("click", (event) => {
   if (event.currentTarget.dataset.action === "income") openTransaction("income");
+  else if (event.currentTarget.dataset.action === "activity") setView("activity");
   else openBudgets();
 });
 document.querySelectorAll("[data-close-dialog]").forEach((button) => button.addEventListener("click", () => button.closest("dialog").close()));
