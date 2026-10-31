@@ -328,7 +328,7 @@ function renderBudgetFields() {
       <div class="budget-field-row" data-budget-category="${categoryId}">
         <div class="budget-field-top">
           <label for="budget-${categoryId}">${categoryName}</label>
-          <span class="budget-input-wrap"><span aria-hidden="true">$</span><input id="budget-${categoryId}" data-budget-input="${categoryId}" type="number" min="0" step="0.01" inputmode="decimal" value="${(categoryBudgetForMonth(category) / 100).toFixed(2)}" aria-label="Monthly budget for ${categoryName}"></span>
+          <span class="budget-input-wrap"><span aria-hidden="true">$</span><input id="budget-${categoryId}" data-budget-input="${categoryId}" type="text" inputmode="decimal" pattern="[0-9]*([.][0-9]{1,2})?" title="Use a non-negative amount with up to two decimal places." value="${(categoryBudgetForMonth(category) / 100).toFixed(2)}" aria-label="Monthly budget for ${categoryName}"></span>
         </div>
         <fieldset class="budget-classification" aria-label="Classification for ${categoryName}">
           <legend class="sr-only">Classification for ${categoryName}</legend>
@@ -549,6 +549,10 @@ transactionForm.addEventListener("submit", (event) => {
   render();
   transactionDialog.close();
   showToast(wasEditing ? "Entry updated" : `${currentKind === "income" ? "Income" : "Expense"} saved`);
+});
+
+document.querySelector("#budget-fields").addEventListener("focusin", (event) => {
+  if (event.target.matches("[data-budget-input]")) event.target.select();
 });
 
 document.querySelector("#add-category").addEventListener("click", () => {
