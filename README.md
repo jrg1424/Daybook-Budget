@@ -103,3 +103,7 @@ For every change, write down the behavior it promises, the failure cases, and ho
 - Add a storage schema version and a migration test using a saved older-format fixture.
 - Make the supported month range derive from a single documented rule.
 - Test keyboard-only use, screen-reader announcements, narrow mobile layouts, and offline reloads.
+
+## Programmer Joke
+
+Why did the developer bring a ladder to work? To reach the high-level language.
