@@ -64,6 +64,7 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .login-form input { width: 100%; min-height: 45px; padding: 0 12px; border: 1px solid #dfe6e1; border-radius: 6px; color: var(--ink); background: white; font-size: 13px; }
 .login-form input::placeholder { color: #a0aaa3; }
 .login-submit { width: 100%; margin-top: 4px; }
+.backend-status { min-height: 16px; margin: 14px 0 0; color: var(--muted); font-size: 11px; }
 .login-demo-notice { margin: 17px 0 0; padding: 11px 12px; border: 1px solid var(--line); border-radius: 6px; color: #717d75; background: #fafcfb; font-size: 11px; line-height: 1.6; }
 .sidebar {
   position: fixed;

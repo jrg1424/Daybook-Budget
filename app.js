@@ -36,12 +36,14 @@ function readState() {
   return createInitialState();
 }
 
-let state = readState();
+let state = createInitialState();
 let selectedMonth = localDateString().slice(0, 7);
 let currentKind = "expense";
 let editingTransactionId = null;
 let latestReport = null;
 let toastTimer;
+let stateReady = false;
+let saveQueue = Promise.resolve();
 
 const monthPicker = document.querySelector("#month-picker");
 const yearPicker = document.querySelector("#year-picker");
@@ -67,6 +69,11 @@ const profileTrigger = document.querySelector("#profile-trigger");
 const profileMenu = document.querySelector("#profile-menu");
 const profileNameInput = document.querySelector("#profile-name");
 const profileForm = document.querySelector("#profile-form");
+const backendStatus = document.querySelector("#backend-status");
+const loginSubmitButton = loginForm.querySelector("[type=submit]");
+
+loginSubmitButton.disabled = true;
+loginSubmitButton.textContent = "Connecting…";
 
 function closeProfileMenu() {
   profileMenu.hidden = true;
@@ -97,10 +104,57 @@ function showLogin() {
 }
 
 function saveState() {
+  const snapshot = JSON.stringify(state);
+  saveQueue = saveQueue.catch(() => {}).then(async () => {
+    const response = await fetch("/api/state", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: snapshot
+    });
+    if (!response.ok) throw new Error(`State save failed with status ${response.status}`);
+  });
+  return saveQueue;
+}
+
+async function persistState(successMessage) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    await saveState();
+    showToast(successMessage);
   } catch (error) {
-    showToast("Could not save on this device. Check available storage.");
+    console.error("Could not save budget data to the local backend.", error);
+    showToast("Could not save to the local backend. Check the server connection.");
+  }
+}
+
+async function initializeBackend() {
+  loginSubmitButton.disabled = true;
+  backendStatus.textContent = "Connecting to the local database…";
+  try {
+    const response = await fetch("/api/state");
+    if (!response.ok) throw new Error(`State load failed with status ${response.status}`);
+    const payload = await response.json();
+    if (payload.state) {
+      state = payload.state;
+    } else {
+      state = readState();
+      const saveResponse = await fetch("/api/state", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(state)
+      });
+      if (!saveResponse.ok) throw new Error(`Initial state save failed with status ${saveResponse.status}`);
+    }
+    stateReady = true;
+    render();
+    backendStatus.textContent = "Local database connected.";
+    loginSubmitButton.textContent = "Continue to your budget";
+    loginSubmitButton.disabled = false;
+    if (sessionStorage.getItem(DEMO_SESSION_KEY) === "active") showApp();
+  } catch (error) {
+    console.error("Could not connect to the local backend.", error);
+    backendStatus.textContent = "Could not connect. Make sure the app server is running, then retry.";
+    loginSubmitButton.textContent = "Retry connection";
+    loginSubmitButton.disabled = false;
   }
 }
 
@@ -474,6 +528,10 @@ document.querySelector("#open-transaction-desktop").addEventListener("click", ()
 document.querySelector("#open-budgets").addEventListener("click", openBudgets);
 loginForm.addEventListener("submit", (event) => {
   event.preventDefault();
+  if (!stateReady) {
+    initializeBackend();
+    return;
+  }
   showApp();
 });
 profileTrigger.addEventListener("click", toggleProfileMenu);
@@ -545,10 +603,9 @@ transactionForm.addEventListener("submit", (event) => {
     state.transactions.push({ id: crypto.randomUUID(), ...updatedTransaction, createdAt: Date.now() });
   }
   editingTransactionId = null;
-  saveState();
   render();
   transactionDialog.close();
-  showToast(wasEditing ? "Entry updated" : `${currentKind === "income" ? "Income" : "Expense"} saved`);
+  persistState(wasEditing ? "Entry updated" : `${currentKind === "income" ? "Income" : "Expense"} saved`);
 });
 
 document.querySelector("#budget-fields").addEventListener("focusin", (event) => {
@@ -596,10 +653,9 @@ budgetsForm.addEventListener("submit", (event) => {
       category.classification = input.closest(".budget-field-row").querySelector("[data-category-classification]:checked")?.value || null;
     }
   });
-  saveState();
   render();
   budgetsDialog.close();
-  showToast("Budgets saved");
+  persistState("Budgets saved");
 });
 
 categoryList.addEventListener("click", (event) => {
@@ -616,9 +672,8 @@ document.querySelectorAll("#recent-list, #activity-list").forEach((container) =>
   const deleteButton = event.target.closest("[data-delete-entry]");
   if (!deleteButton) return;
   state.transactions = state.transactions.filter((transaction) => transaction.id !== deleteButton.dataset.deleteEntry);
-  saveState();
   render();
-  showToast("Entry deleted");
+  persistState("Entry deleted");
 }));
 
 activityFilter.addEventListener("change", renderActivity);
@@ -631,12 +686,7 @@ reportResults.addEventListener("click", (event) => {
 });
 
 setDefaultReportDates(selectedMonth);
-render();
-
-if (sessionStorage.getItem(DEMO_SESSION_KEY) === "active") {
-  appShell.hidden = false;
-  loginScreen.hidden = true;
-}
+initializeBackend();
 
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
   window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch((error) => console.warn("Offline support is unavailable.", error)));

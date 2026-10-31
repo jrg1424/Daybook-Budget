@@ -2,17 +2,18 @@
 
 A small, local-first monthly budgeting app. Use it to track income and expenses, set category budgets, review date-range reports, and export a report as CSV.
 
-This repository is also a learning project: its intentionally small vanilla JavaScript codebase makes the important engineering decisions visible without a framework or build system in the way.
+This repository is also a learning project: its small vanilla JavaScript frontend and Node.js backend make the important engineering decisions visible without a frontend build system.
 
 ## Run Locally
 
-There is no install or build step. From the project directory, start a static web server:
+Install the backend dependencies, then start the app server from the project directory:
 
 ```sh
-python3 -m http.server 8000
+npm install
+npm start
 ```
 
-Open [http://localhost:8000](http://localhost:8000). Use an HTTP server rather than opening `index.html` directly: the app uses browser storage and registers a service worker only on supported origins.
+Open [http://127.0.0.1:8000](http://127.0.0.1:8000). If port 8000 is occupied, start on another port with `PORT=8001 npm start`.
 
 Enter placeholder details on the sign-in screen. It is a demo gate, not real authentication. Do not enter a real password.
 
@@ -22,7 +23,7 @@ Enter placeholder details on the sign-in screen. It is a demo gate, not real aut
 - Set monthly budgets, create categories, and classify budgets as needs, wants, or savings.
 - Review monthly totals and activity, filter entries, and move between supported months.
 - Generate date-range reports with prorated budgets, then export the report to CSV.
-- Keep data in this browser using `localStorage`; cache app files for offline loading with a service worker.
+- Store budget data in a local SQLite database through the backend API; cache app files for offline loading with a service worker.
 
 ## How It Is Structured
 
@@ -32,12 +33,16 @@ The app is a static progressive web app with no server-side component:
 | --- | --- |
 | `index.html` | Accessible page structure, forms, dialogs, and navigation. |
 | `styles.css` | Responsive layout and visual states. |
-| `app.js` | Application state, persistence, validation, calculations, rendering, and event handlers. |
+| `app.js` | Application state, API calls, validation, calculations, rendering, and event handlers. |
+| `server.js` | Local Express server, state validation, and SQLite-backed API. |
+| `tests/server.test.js` | API persistence and invalid-state tests. |
 | `sw.js` | Runtime caching for same-origin GET requests and offline fallback. |
 | `manifest.webmanifest` | Installable-app metadata. |
 | `icon.svg` | App icon referenced by the document and manifest. |
 
-The main flow in `app.js` is state-driven: user events validate and update `state`, `saveState()` persists it, and `render()` refreshes the overview and activity views. Reports are generated for a selected date range and kept in `latestReport` for CSV export.
+The main flow in `app.js` is state-driven: startup loads state from `GET /api/state`, user events update `state`, `saveState()` sends changes to `PUT /api/state`, and `render()` refreshes the views. The backend validates and stores each state snapshot in SQLite. Reports are generated for a selected date range and kept in `latestReport` for CSV export.
+
+The API starts with an empty database. On first startup, it imports existing valid budget data from this browser's previous local storage, if available. After that, SQLite is authoritative. The profile display name remains in browser storage.
 
 ## Data Model And Important Decisions
 
@@ -54,14 +59,15 @@ The stored state has three top-level collections:
 - Money is stored as integer cents to avoid accumulating floating-point currency errors. Form values are converted to cents when saved.
 - A transaction's `date` is an ISO-style `YYYY-MM-DD` string, which makes chronological comparisons and month filtering straightforward.
 - Monthly budget overrides carry forward: the app uses the most recent override on or before the selected month. Reports prorate each month's budget by the number of selected days in that month.
-- The app stores data in browser-local storage, not in an account or cloud database. Clearing site data removes it, and another browser or device will not see it.
-- `localStorage` is synchronous and has limited capacity. `saveState()` catches write failures, but this is not a substitute for backup, synchronization, or durable storage.
+- Budget data is stored in `.data/daybook.sqlite`; the directory is excluded from Git. Clearing browser site data does not delete the database, but deleting the database file does.
+- The backend stores a validated JSON state snapshot in SQLite to preserve the existing frontend data model. This keeps the initial API small; a multi-user system would need account ownership and per-user data isolation.
+- API writes are serialized by the browser and each SQLite snapshot update is atomic. Failed requests show an error, but the app does not yet retry or roll back an in-memory change.
 
 Treat the stored JSON as untrusted input. `readState()` checks only a small part of its shape; production software would validate and migrate persisted data before using it.
 
 ## Offline Behavior
 
-`sw.js` uses a network-first strategy for same-origin GET requests. Successful responses are cached, and a cached response is returned if the network request fails. The install step pre-caches the app shell. When changing cache behavior, remember to update `CACHE_NAME` so existing installations can move to a new cache version.
+`sw.js` uses a network-first strategy for app files and excludes `/api/` responses. Successful static responses are cached, and a cached response is returned if the network request fails. Budget data still requires the local backend to be running. When changing cache behavior, remember to update `CACHE_NAME` so existing installations can move to a new cache version.
 
 To check offline behavior, load the app once over HTTP, then use your browser's developer tools to switch the network to offline and reload. Browser storage and service-worker behavior can vary, so test in the browsers you intend to support.
 
@@ -80,17 +86,19 @@ Use each step to practice explaining the trade-offs, not just making the feature
 
 For every change, write down the behavior it promises, the failure cases, and how you would verify it. That is the habit this project is meant to help build.
 
-## Current Limitations
+## Backend Safety And Limitations
 
-- Sign-in accepts any required email and passcode and only gates the demo UI for the current browser session. It does not authenticate or authorize anyone.
-- Data is local to one browser profile and has no automatic backup or synchronization.
-- There is no automated test runner, dependency manager, or build pipeline in this repository yet.
+- The sign-in screen is a demo gate only. It does not authenticate or authorize anyone; all browser sessions using this local server share the same database.
+- The server binds to `127.0.0.1` and has no authentication. Do not expose it to a network or deploy it for real users.
+- The database has no automatic backup or synchronization. Back up `.data/daybook.sqlite` while the server is stopped.
+- Run the backend tests with `npm test`. There is no frontend test runner or build pipeline yet.
 - The app supports months from January 2026 through December 2029; the range is currently fixed in the UI and JavaScript.
-- Browser storage is not encrypted by this app. Avoid using real financial or account credentials in the demo.
+- The database is not encrypted by this app. Avoid storing sensitive real financial data.
 
 ## Suggested First Contributions
 
 - Add unit tests for currency conversion, month selection, and report budget proration.
+- Replace the single shared state snapshot with per-user records only after adding real authentication and authorization.
 - Add JSON export and import with schema validation and a clear overwrite/merge policy.
 - Add a storage schema version and a migration test using a saved older-format fixture.
 - Make the supported month range derive from a single documented rule.
