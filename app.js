@@ -1,13 +1,17 @@
+// Storage keys keep old browser data, the demo session, and the profile name separate.
 const STORAGE_KEY = "daybook-budget-v1";
 const DEMO_SESSION_KEY = "daybook-demo-session";
 const PROFILE_NAME_KEY = "daybook-profile-name";
+// The supported month range is also reflected by the month/year options in index.html.
 const MAX_MONTH = "2029-12";
 const DEFAULT_CATEGORIES = ["Housing", "Groceries", "Transportation", "Utilities", "Dining out", "Health", "Personal", "Other"];
 const CATEGORY_COLORS = ["#78a889", "#7994a2", "#b59a69", "#819b79", "#cb896e", "#8e8ab3", "#c17e8e", "#9ba69f"];
+// Money is stored as integer cents; Intl.NumberFormat is only used to display it as currency.
 const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 const shortCurrency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 const dateFormatter = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" });
 
+// Format a local calendar date as YYYY-MM-DD without converting it through UTC.
 function localDateString(date = new Date()) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -15,6 +19,7 @@ function localDateString(date = new Date()) {
   return `${year}-${month}-${day}`;
 }
 
+// This is the data shape used when there is no saved budget yet.
 function createInitialState() {
   return {
     categories: DEFAULT_CATEGORIES.map((name, index) => ({ id: `category-${index}`, name, budget: 0 })),
@@ -23,6 +28,7 @@ function createInitialState() {
   };
 }
 
+// Read the previous localStorage copy so it can be imported into an empty backend database.
 function readState() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
@@ -36,15 +42,19 @@ function readState() {
   return createInitialState();
 }
 
+// `state` is the current in-memory budget. The UI renders from it and sends changes to the backend.
 let state = createInitialState();
 let selectedMonth = localDateString().slice(0, 7);
+// These values track temporary interface state rather than saved transactions and budgets.
 let currentKind = "expense";
 let editingTransactionId = null;
 let latestReport = null;
 let toastTimer;
 let stateReady = false;
+// Network writes are queued so they finish in order and older data cannot overwrite newer edits.
 let saveQueue = Promise.resolve();
 
+// Cache DOM elements once so functions can update them without repeatedly searching the page.
 const monthPicker = document.querySelector("#month-picker");
 const yearPicker = document.querySelector("#year-picker");
 const categoryList = document.querySelector("#category-list");
@@ -75,6 +85,7 @@ const loginSubmitButton = loginForm.querySelector("[type=submit]");
 loginSubmitButton.disabled = true;
 loginSubmitButton.textContent = "Connecting…";
 
+// The profile menu is a local demo feature; it is not user authentication.
 function closeProfileMenu() {
   profileMenu.hidden = true;
   profileTrigger.setAttribute("aria-expanded", "false");
@@ -104,6 +115,7 @@ function showLogin() {
 }
 
 function saveState() {
+  // Capture a snapshot now, then send it after any earlier save request finishes.
   const snapshot = JSON.stringify(state);
   saveQueue = saveQueue.catch(() => {}).then(async () => {
     const response = await fetch("/api/state", {
@@ -117,6 +129,7 @@ function saveState() {
 }
 
 async function persistState(successMessage) {
+  // Show success only after the backend confirms the save; show an error if it does not.
   try {
     await saveState();
     showToast(successMessage);
@@ -127,6 +140,7 @@ async function persistState(successMessage) {
 }
 
 async function initializeBackend() {
+  // Load before enabling the app so a user cannot overwrite saved data with empty defaults.
   loginSubmitButton.disabled = true;
   backendStatus.textContent = "Connecting to the local database…";
   try {
@@ -136,6 +150,7 @@ async function initializeBackend() {
     if (payload.state) {
       state = payload.state;
     } else {
+      // The first user of this database can bring forward their old browser-saved budget.
       state = readState();
       const saveResponse = await fetch("/api/state", {
         method: "PUT",
@@ -158,6 +173,7 @@ async function initializeBackend() {
   }
 }
 
+// Escape user-entered text before placing it inside an HTML string.
 function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, (character) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
@@ -165,15 +181,18 @@ function escapeHtml(value) {
 }
 
 function formatMoney(cents, compact = false) {
+  // Convert cents to dollars only for display; calculations continue using integer cents.
   const amount = cents / 100;
   return compact ? shortCurrency.format(amount) : currency.format(amount);
 }
 
 function monthTransactions(month = selectedMonth) {
+  // ISO dates begin with YYYY-MM, so matching that prefix selects transactions in the month.
   return state.transactions.filter((transaction) => transaction.date.startsWith(month));
 }
 
 function categoryBudgetForMonth(category, month = selectedMonth) {
+  // A monthly override carries forward until a later month defines another value.
   let budget = category.budget || 0;
   const overrides = state.monthlyBudgets || {};
   const months = Object.keys(overrides).filter((key) => key <= month).sort();
@@ -184,11 +203,13 @@ function categoryBudgetForMonth(category, month = selectedMonth) {
 }
 
 function monthTitle(month = selectedMonth) {
+  // JavaScript Date months are zero-based, so subtract one from the displayed month number.
   const [year, monthNumber] = month.split("-").map(Number);
   return new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" }).format(new Date(year, monthNumber - 1, 1));
 }
 
 function changeMonth(month) {
+  // Validate the selected month before updating labels, report defaults, and rendered totals.
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month) || month > MAX_MONTH || month < "2026-01") return;
   selectedMonth = month;
   yearPicker.value = selectedMonth.slice(0, 4);
@@ -199,6 +220,7 @@ function changeMonth(month) {
 }
 
 function refreshMonthLabel() {
+  // Keep the month text consistent across the overview and activity panels.
   const title = monthTitle();
   document.querySelector("#overview-date").textContent = title.toUpperCase();
   document.querySelector("#activity-month-title").textContent = title;
@@ -206,6 +228,7 @@ function refreshMonthLabel() {
 }
 
 function totalsFor(transactions) {
+  // `reduce` combines many entries into one total for income and one for expenses.
   return transactions.reduce((totals, transaction) => {
     totals[transaction.kind] += transaction.amount;
     return totals;
@@ -213,6 +236,7 @@ function totalsFor(transactions) {
 }
 
 function renderOverview() {
+  // Calculate and display the selected month's totals, alerts, and category progress bars.
   const transactions = monthTransactions();
   const expenses = transactions.filter((transaction) => transaction.kind === "expense");
   const totals = totalsFor(transactions);
@@ -256,6 +280,7 @@ function renderOverview() {
   progressBar.style.width = `${progress}%`;
   progressBar.classList.toggle("is-over", remaining < 0);
 
+  // Build a lookup of expense totals by category so each category row can show its own progress.
   const spentByCategory = expenses.reduce((map, transaction) => {
     map.set(transaction.categoryId, (map.get(transaction.categoryId) || 0) + transaction.amount);
     return map;
@@ -284,6 +309,7 @@ function renderOverview() {
 }
 
 function renderTransactionList(container, transactions, canDelete) {
+  // Reuse this function for both the short recent list and the full activity list.
   if (!transactions.length) {
     container.innerHTML = `<div class="empty-state"><p>No entries for ${escapeHtml(monthTitle())} yet. Add one to get started.</p><button class="button button-outline" data-open-transaction type="button">Add your first entry</button></div>`;
     return;
@@ -303,6 +329,7 @@ function renderTransactionList(container, transactions, canDelete) {
 }
 
 function renderActivity() {
+  // Sort this month's entries and apply the optional income/expense filter.
   let transactions = monthTransactions().slice().sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt);
   if (activityFilter.value !== "all") transactions = transactions.filter((transaction) => transaction.kind === activityFilter.value);
   document.querySelector("#activity-count").textContent = `${transactions.length} ${transactions.length === 1 ? "entry" : "entries"}`;
@@ -310,12 +337,14 @@ function renderActivity() {
 }
 
 function render() {
+  // Refresh all visible data views after state or the selected month changes.
   refreshMonthLabel();
   renderOverview();
   renderActivity();
 }
 
 function setView(view) {
+  // Show one content panel and mark its matching navigation button as selected.
   document.querySelectorAll("[data-view-panel]").forEach((panel) => {
     const isActive = panel.dataset.viewPanel === view;
     panel.hidden = !isActive;
@@ -331,6 +360,7 @@ function setView(view) {
 }
 
 function showToast(message) {
+  // A new message replaces the old one and restarts its short visibility timer.
   const toast = document.querySelector("#toast");
   toast.textContent = message;
   toast.classList.add("is-visible");
@@ -339,6 +369,7 @@ function showToast(message) {
 }
 
 function openTransaction(kind = "expense", transactionToEdit = null) {
+  // One dialog supports both a new entry and editing an existing entry.
   editingTransactionId = transactionToEdit?.id || null;
   currentKind = kind;
   transactionForm.reset();
@@ -363,6 +394,7 @@ function openTransaction(kind = "expense", transactionToEdit = null) {
 }
 
 function renderEntryCategories() {
+  // Expenses use the user's categories; income uses a fixed list of income sources.
   const categories = currentKind === "income"
     ? ["Paycheck", "Side income", "Refund", "Other income"].map((name) => ({ id: name, name }))
     : state.categories.map((category) => ({ id: category.id, name: category.name }));
@@ -372,6 +404,7 @@ function renderEntryCategories() {
 }
 
 function openBudgets() {
+  // Rebuild the form from current state each time the budget dialog opens.
   renderBudgetFields();
   document.querySelector("#budget-copy").textContent = `Budgets for ${monthTitle()} carry forward to later months until you change them.`;
   document.querySelector("#budget-error").textContent = "";
@@ -379,6 +412,7 @@ function openBudgets() {
 }
 
 function renderBudgetFields() {
+  // Create one amount input and classification choice for each saved category.
   document.querySelector("#budget-fields").innerHTML = state.categories.map((category) => {
     const categoryId = escapeHtml(category.id);
     const categoryName = escapeHtml(category.name);
@@ -400,17 +434,21 @@ function renderBudgetFields() {
 }
 
 function setDefaultReportDates(month = selectedMonth) {
+  // Default reports to the first and last calendar days of the selected month.
   const [year, monthNumber] = month.split("-").map(Number);
   reportStart.value = `${month}-01`;
   reportEnd.value = localDateString(new Date(year, monthNumber, 0));
 }
 
 function dateRangeBudget(category, start, end) {
+  // Split a report range at month boundaries so each month's budget is prorated correctly.
   let allowed = 0;
   let hasBudget = false;
+  // Using noon reduces date differences being affected by daylight-saving clock changes.
   const cursor = new Date(`${start}T12:00:00`);
   const last = new Date(`${end}T12:00:00`);
   while (cursor <= last) {
+    // Work out the part of this month included in the report, then move to the next month.
     const year = cursor.getFullYear();
     const month = cursor.getMonth();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -428,6 +466,7 @@ function dateRangeBudget(category, start, end) {
 }
 
 function renderBudgetComposition(start, end) {
+  // Group classified budgets so the report can draw a proportional chart and legend.
   const groups = [
     { name: "Needs", amount: 0, color: "#5b9671" },
     { name: "Wants", amount: 0, color: "#7895a2" },
@@ -467,6 +506,7 @@ function renderBudgetComposition(start, end) {
 }
 
 function createReport(start, end) {
+  // Check the date range before calculating expenses and comparing them with prorated budgets.
   if (!start || !end || start > end) {
     reportResults.innerHTML = `<div class="report-empty"><h2>Check your dates</h2><p>The end date needs to be the same as or later than the start date.</p></div>`;
     latestReport = null;
@@ -511,6 +551,7 @@ function createReport(start, end) {
 }
 
 function exportReport() {
+  // Quote CSV cells and double embedded quotes so commas and quotes stay inside their cells.
   if (!latestReport) return;
   const rows = [["Category", "Spent", "Budget", "Difference", "Status"]];
   latestReport.categories.forEach((category) => {
@@ -527,6 +568,7 @@ function exportReport() {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+// Event handlers connect user actions to the functions above. Delegation is used for generated rows.
 document.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => setView(button.dataset.view)));
 document.querySelectorAll("[data-go-view]").forEach((button) => button.addEventListener("click", () => setView(button.dataset.goView)));
 document.querySelectorAll("[data-open-transaction]").forEach((button) => button.addEventListener("click", () => openTransaction()));
@@ -579,6 +621,7 @@ document.querySelectorAll("[data-kind]").forEach((button) => button.addEventList
 
 transactionForm.addEventListener("submit", (event) => {
   event.preventDefault();
+  // Validate form values before converting dollars to cents and changing the saved transaction list.
   const amount = Number(entryAmount.value);
   if (!Number.isFinite(amount) || amount <= 0) {
     transactionError.textContent = "Enter an amount greater than zero.";
@@ -643,6 +686,7 @@ document.querySelector("#add-category").addEventListener("click", () => {
 
 budgetsForm.addEventListener("submit", (event) => {
   event.preventDefault();
+  // Reject invalid amounts before converting the form values back into integer cents.
   const error = document.querySelector("#budget-error");
   const values = [...document.querySelectorAll("[data-budget-input]")];
   for (const input of values) {
@@ -671,6 +715,7 @@ categoryList.addEventListener("click", (event) => {
 });
 
 document.querySelectorAll("#recent-list, #activity-list").forEach((container) => container.addEventListener("click", (event) => {
+  // These lists are re-created during rendering, so one parent listener handles their edit/delete buttons.
   const editButton = event.target.closest("[data-edit-entry]");
   if (editButton) {
     const transaction = state.transactions.find((item) => item.id === editButton.dataset.editEntry);
@@ -684,6 +729,7 @@ document.querySelectorAll("#recent-list, #activity-list").forEach((container) =>
   persistState("Entry deleted");
 }));
 
+// Reports are generated only when requested; CSV export uses the most recently generated report.
 activityFilter.addEventListener("change", renderActivity);
 document.querySelector("#report-form").addEventListener("submit", (event) => {
   event.preventDefault();
@@ -693,9 +739,11 @@ reportResults.addEventListener("click", (event) => {
   if (event.target.closest("#export-report")) exportReport();
 });
 
+// Set up the first report range, then fetch saved data before enabling the application.
 setDefaultReportDates(selectedMonth);
 initializeBackend();
 
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+  // Service workers require HTTP(S), so they are not registered when opening a local file directly.
   window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch((error) => console.warn("Offline support is unavailable.", error)));
 }
